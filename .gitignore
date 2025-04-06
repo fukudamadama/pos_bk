@@ -11,3 +11,4 @@ py312env/
 node_modules/
 build/
 dist/
+backend_env/
