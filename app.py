@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from sqlalchemy.orm import Session
+import shutil
+import os
+from adfi_inference import classify_hair
 from db_control.crud import (
     get_db,
     create_hair_quality,
@@ -73,94 +76,14 @@ def delete_hair_quality_data(hair_quality_id: int, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="HairQuality data not found")
     return {"id": hair_quality_id, "status": "deleted"}
 
-# from fastapi import FastAPI, HTTPException, Query
-# from fastapi.middleware.cors import CORSMiddleware
-# from pydantic import BaseModel
-# import requests
-# import json
-# # from db_control import crud, mymodels
-# from db_control import crud, mymodels
-# # MySQLのテーブル作成
-# # from db_control.create_tables import init_db
+# adfiおはげモデルにファイルを送る
+@app.post("/classify-hair/")
+async def classify_hair_image(file: UploadFile = File(...)):
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-# # # アプリケーション初期化時にテーブルを作成
-# # init_db()
+    result = classify_hair(temp_path)
 
-
-# class Customer(BaseModel):
-#     customer_id: str
-#     customer_name: str
-#     age: int
-#     gender: str
-
-
-# app = FastAPI()
-
-# # CORSミドルウェアの設定
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-# @app.get("/")
-# def index():
-#     return {"message": "FastAPI top page!"}
-
-
-# @app.post("/customers")
-# def create_customer(customer: Customer):
-#     values = customer.dict()
-#     tmp = crud.myinsert(mymodels.Customers, values)
-#     result = crud.myselect(mymodels.Customers, values.get("customer_id"))
-
-#     if result:
-#         result_obj = json.loads(result)
-#         return result_obj if result_obj else None
-#     return None
-
-
-# @app.get("/customers")
-# def read_one_customer(customer_id: str = Query(...)):
-#     result = crud.myselect(mymodels.Customers, customer_id)
-#     if not result:
-#         raise HTTPException(status_code=404, detail="Customer not found")
-#     result_obj = json.loads(result)
-#     return result_obj[0] if result_obj else None
-
-# @app.get("/allcustomers")
-# def read_all_customer():
-#     result = crud.myselectAll(mymodels.Customers)
-#     # 結果がNoneの場合は空配列を返す
-#     if not result:
-#         return []
-#     # JSON文字列をPythonオブジェクトに変換
-#     return json.loads(result)
-
-
-# @app.put("/customers")
-# def update_customer(customer: Customer):
-#     values = customer.dict()
-#     values_original = values.copy()
-#     tmp = crud.myupdate(mymodels.Customers, values)
-#     result = crud.myselect(mymodels.Customers, values_original.get("customer_id"))
-#     if not result:
-#         raise HTTPException(status_code=404, detail="Customer not found")
-#     result_obj = json.loads(result)
-#     return result_obj[0] if result_obj else None
-
-
-# @app.delete("/customers")
-# def delete_customer(customer_id: str = Query(...)):
-#     result = crud.mydelete(mymodels.Customers, customer_id)
-#     if not result:
-#         raise HTTPException(status_code=404, detail="Customer not found")
-#     return {"customer_id": customer_id, "status": "deleted"}
-
-
-# @app.get("/fetchtest")
-# def fetchtest():
-#     response = requests.get('https://jsonplaceholder.typicode.com/users')
-#     return response.json()
+    os.remove(temp_path)  # ファイル削除
+    return result
