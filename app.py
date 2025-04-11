@@ -13,6 +13,14 @@ from db_control.crud import (
     get_all_hair_quality,
     update_hair_quality,
     delete_hair_quality
+)   
+# ★★★hairquestionyouをデータベースから持ってくる
+from db_control.crud import (
+    create_hair_questionyou,
+    get_hair_questionyou_by_id,
+    get_all_hair_questionyou,   
+    update_hair_questionyou,
+    delete_hair_questionyou
 )
 
 # フォームデータに合わせたPydanticモデル
@@ -26,6 +34,26 @@ class HairQuality(BaseModel):
     thickness: str
     texture: List[str]  # フロントから配列で受け取る想定
     firmness: str
+
+# ★★★HairQuestionYouをクラスに文字列を定義
+class HairQuestionYou(BaseModel):
+    nickname: str
+    age: int # 数字なのでint
+    gender: str
+    bloodtype: str
+    occupation: str
+    familyhage: str
+    eatinghabits: str
+    sleep: str
+    stress: str
+    undo: str
+    drink: str
+    smoke: str
+    usugemotivation: str
+    usugeexperience: str
+    futureaga: str
+    sindan: str
+
 
 app = FastAPI()
 
@@ -43,38 +71,89 @@ def index():
     return {"message": "FastAPI top page!"}
 
 # データ新規作成（CREATE）
-@app.post("/hairQuality")
+@app.post("/kamokamo/hairQuality")
 def create_hair_quality_data(hair_quality: HairQuality, db: Session = Depends(get_db)):
     return create_hair_quality(db, hair_quality.dict())
 
+# データ新規作成（CREATE）
+# ★★★hairQuestionYouについて追加
+@app.post("/kamokamo/hairQuality/hairQuestionYou")
+def create_hair_questionyou_data(hair_questionyou: HairQuestionYou, db: Session = Depends(get_db)):
+    return create_hair_questionyou(db, hair_questionyou.dict())
+
+
 # 全データ取得（READ）
-@app.get("/hairQuality")
+@app.get("/kamokamo/hairQuality")
 def read_all_hair_quality_data(db: Session = Depends(get_db)):
     return get_all_hair_quality(db)
 
+
+# 全データ取得（READ）
+# ★★★hairQuestionYouについて追加
+@app.get("/kamokamo/hairQuality/hairQuestionYou")
+def read_all_hair_questionyou_data(db: Session = Depends(get_db)):
+    return get_all_hair_questionyou(db)
+
+
 # ID指定データ取得（READ）
-@app.get("/hairQuality/{hair_quality_id}")
+@app.get("/kamokamo/hairQuality/{hair_quality_id}")
 def read_one_hair_quality_data(hair_quality_id: int, db: Session = Depends(get_db)):
     result = get_hair_quality_by_id(db, hair_quality_id)
     if not result:
         raise HTTPException(status_code=404, detail="HairQuality data not found")
     return result
 
+
+# ID指定データ取得（READ）
+# ★★★hairQuestionYouについて追加
+@app.get("/kamokamo/hairQuality/hairQuestionYou{hair_questionyou_id}")
+def read_one_hair_questionyou_data(hair_questionyou_id: int, db: Session = Depends(get_db)):
+    result = get_hair_questionyou_by_id(db, hair_questionyou_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="HairQuestionYou data not found")
+    return result
+
+
+
 # データ更新（UPDATE）
-@app.put("/hairQuality/{hair_quality_id}")
+@app.put("/kamokamo/hairQuality/{hair_quality_id}")
 def update_hair_quality_data(hair_quality_id: int, hair_quality: HairQuality, db: Session = Depends(get_db)):
     result = update_hair_quality(db, hair_quality_id, hair_quality.dict())
     if not result:
         raise HTTPException(status_code=404, detail="HairQuality data not found")
     return result
 
+
+# データ更新（UPDATE）
+# ★★★hairQuestionYouについて追加
+@app.put("/kamokamo/hairQuality/hairQuestionYou{hair_questionyou_id}")
+def update_hair_questionyou_data(hair_questionyou_id: int, hair_questionyou: HairQuestionYou, db: Session = Depends(get_db)):
+    result = update_hair_questionyou(db, hair_questionyou_id, hair_questionyou.dict())
+    if not result:
+        raise HTTPException(status_code=404, detail="HairQuestionYou data not found")
+    return result
+
+
+
 # データ削除（DELETE）
-@app.delete("/hairQuality/{hair_quality_id}")
+@app.delete("/kamokamo/hairQuality/{hair_quality_id}")
 def delete_hair_quality_data(hair_quality_id: int, db: Session = Depends(get_db)):
     result = delete_hair_quality(db, hair_quality_id)
     if not result:
         raise HTTPException(status_code=404, detail="HairQuality data not found")
     return {"id": hair_quality_id, "status": "deleted"}
+
+
+# データ削除（DELETE）
+# ★★★hairQuestionYouについて追加
+@app.delete("/kamokamo/hairQuestionYou/{hair_questionyou_id}")
+def delete_hair_questionyou_data(hair_questionyou_id: int, db: Session = Depends(get_db)):
+    result = delete_hair_questionyou(db, hair_questionyou_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="hairQuestionYou data not found")
+    return {"id": hair_questionyou_id, "status": "deleted"}
+
+
 
 # adfiおはげモデルにファイルを送る
 @app.post("/classify-hair/")
