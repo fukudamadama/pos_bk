@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 import shutil
 import os
 from adfi_inference import classify_hair
+from gpt_diagnostic import diagnostic_kamo #かも先生の診断コメント
 from db_control.crud import (
     get_db,
     create_hair_quality,
@@ -28,6 +29,7 @@ class HairQuality(BaseModel):
     firmness: str
 
 app = FastAPI()
+
 
 # CORS設定
 app.add_middleware(
@@ -87,3 +89,21 @@ async def classify_hair_image(file: UploadFile = File(...)):
 
     os.remove(temp_path)  # ファイル削除
     return result
+
+#髪質診断＋おハゲモデルでOpenAIに診断してもらう
+class Question(BaseModel):
+    hageLevel: str
+
+@app.post("/diagnostic_kamo/")
+async def ask_diagnostic(question: Question):
+    """
+    髪質診断＋おハゲモデルでOpenAIに診断してもらう
+    """
+    try:
+        # かも先生の診断コメント関数を呼び出す
+        answer = diagnostic_kamo(question.hageLevel)
+        return {"answer": answer}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
