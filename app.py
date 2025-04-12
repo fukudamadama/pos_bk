@@ -34,7 +34,10 @@ app = FastAPI()
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # ローカル（Next.js開発環境）
+        "https://app-002-step3-2-node-oshima2.azurewebsites.net"  # 本番
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
