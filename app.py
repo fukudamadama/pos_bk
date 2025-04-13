@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 import shutil
 import os
 from adfi_inference import classify_hair
+from gpt_diagnostic import diagnostic_kamo #かも先生の診断コメント
 from db_control.crud import (
     get_db,
     create_hair_quality,
@@ -23,11 +24,11 @@ from db_control.crud import (
     delete_hair_questionyou
 )
 
+# HairQuestionYou を mymodels_MySQL からインポート
+from db_control.mymodels_MySQL import HairQuestionYou
+
 # フォームデータに合わせたPydanticモデル
 class HairQuality(BaseModel):
-    nickname: str
-    age: int
-    gender: str
     density: str
     hair_loss: str
     scalp: List[str]  # フロントから配列で受け取る想定
@@ -60,7 +61,10 @@ app = FastAPI()
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # ローカル（Next.js開発環境）
+        "https://app-002-step3-2-node-oshima2.azurewebsites.net"  # 本番
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -106,14 +110,21 @@ def read_one_hair_quality_data(hair_quality_id: int, db: Session = Depends(get_d
 
 # ID指定データ取得（READ）
 # ★★★hairQuestionYouについて追加
-@app.get("/kamokamo/hairQuality/hairQuestionYou{hair_questionyou_id}")
+@app.get("/kamokamo/hairQuality/hairQuestionYou/{hair_questionyou_id}")
 def read_one_hair_questionyou_data(hair_questionyou_id: int, db: Session = Depends(get_db)):
     result = get_hair_questionyou_by_id(db, hair_questionyou_id)
     if not result:
         raise HTTPException(status_code=404, detail="HairQuestionYou data not found")
     return result
 
-
+# hair_quality_idで指定してhairQuestionYouを取得するGETルート（新規追加！）
+# ★★★hairQualityに紐づくhairQuestionYouを取得
+@app.get("/kamokamo/hairQuality/{hair_quality_id}/hairQuestionYou")
+def read_questionyou_by_hair_quality(hair_quality_id: int, db: Session = Depends(get_db)):
+    result = db.query(HairQuestionYou).filter(HairQuestionYou.hair_quality_id == hair_quality_id).first()
+    if not result:
+        raise HTTPException(status_code=404, detail="HairQuestionYou (by hair_quality_id) not found")
+    return result
 
 # データ更新（UPDATE）
 @app.put("/kamokamo/hairQuality/{hair_quality_id}")
@@ -125,14 +136,13 @@ def update_hair_quality_data(hair_quality_id: int, hair_quality: HairQuality, db
 
 
 # データ更新（UPDATE）
-# ★★★hairQuestionYouについて追加
-@app.put("/kamokamo/hairQuality/hairQuestionYou{hair_questionyou_id}")
+# # ★★★hairQuestionYouについて追加
+@app.put("/kamokamo/hairQuality/hairQuestionYou/{hair_questionyou_id}")
 def update_hair_questionyou_data(hair_questionyou_id: int, hair_questionyou: HairQuestionYou, db: Session = Depends(get_db)):
     result = update_hair_questionyou(db, hair_questionyou_id, hair_questionyou.dict())
     if not result:
         raise HTTPException(status_code=404, detail="HairQuestionYou data not found")
     return result
-
 
 
 # データ削除（DELETE）
@@ -166,3 +176,19 @@ async def classify_hair_image(file: UploadFile = File(...)):
 
     os.remove(temp_path)  # ファイル削除
     return result
+
+#髪質診断＋おハゲモデルでOpenAIに診断してもらう
+class Question(BaseModel):
+    hageLevel: str
+
+@app.post("/diagnostic_kamo/")
+async def ask_diagnostic(question: Question):
+    """
+    髪質診断＋おハゲモデルでOpenAIに診断してもらう
+    """
+    try:
+        # かも先生の診断コメント関数を呼び出す
+        answer = diagnostic_kamo(question.hageLevel)
+        return {"answer": answer}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

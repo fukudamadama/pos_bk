@@ -1,5 +1,6 @@
 from sqlalchemy import String, Integer, JSON, TIMESTAMP, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import ForeignKey
 # from datetime import datetime
 
 class Base(DeclarativeBase):
@@ -8,9 +9,6 @@ class Base(DeclarativeBase):
 class HairQuality(Base):
     __tablename__ = 'hair_quality'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    nickname: Mapped[str] = mapped_column(String(255))
-    age: Mapped[int] = mapped_column(Integer)
-    gender: Mapped[str] = mapped_column(String(20))
     density: Mapped[str] = mapped_column(String(50))
     hair_loss: Mapped[str] = mapped_column(String(50))
     scalp: Mapped[dict] = mapped_column(JSON)
@@ -26,6 +24,7 @@ class HairQuality(Base):
 class HairQuestionYou(Base):
     __tablename__ = 'hair_questionyou'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    hair_quality_id: Mapped[int] = mapped_column(ForeignKey("hair_quality.id"))  # hairQualityと紐づくけ
     nickname: Mapped[str] = mapped_column(String(255))
     age: Mapped[int] = mapped_column(Integer)
     gender: Mapped[str] = mapped_column(String(50))
