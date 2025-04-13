@@ -85,6 +85,17 @@ def create_hair_quality_data(hair_quality: HairQuality, db: Session = Depends(ge
 def create_hair_questionyou_data(hair_questionyou: HairQuestionYou, db: Session = Depends(get_db)):
     return create_hair_questionyou(db, hair_questionyou.dict())
 
+# hair_quality_idで指定してhairQuestionYouを新規登録するPOSTルート（新規追加！）
+# ★★★hairQualityに紐づくhairQuestionYouを新規登録
+@app.post("/kamokamo/hairQuality/{hair_quality_id}/hairQuestionYou")
+def create_hair_questionyou_with_quality_id(
+    hair_quality_id: int,
+    hair_questionyou: HairQuestionYou,
+    db: Session = Depends(get_db)
+):
+    data = hair_questionyou.dict()
+    data["hair_quality_id"] = hair_quality_id
+    return create_hair_questionyou(db, data)
 
 # 全データ取得（READ）
 @app.get("/kamokamo/hairQuality")
