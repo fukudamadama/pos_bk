@@ -13,3 +13,4 @@ mysqlclient==2.2.1
 Pillow==10.2.0
 # Chatgpt用
 openai==1.72.0
+python-multipart==0.0.20
