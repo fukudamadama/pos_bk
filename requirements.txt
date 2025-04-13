@@ -11,3 +11,5 @@ pymysql==1.1.0
 mysqlclient==2.2.1
 # 推論用（ADFI画像処理）
 Pillow==10.2.0
+# Chatgpt用
+openai==1.72.0
