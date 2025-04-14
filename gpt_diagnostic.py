@@ -22,10 +22,6 @@ import requests
 load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY")
 
-load_dotenv()
-print("OPENAI_API_KEY is:", os.getenv("OPENAI_API_KEY"))
-load_dotenv()
-print("OPENAI_API_KEY from .env is:", os.getenv("OPENAI_API_KEY"))
 #-----------------------------------------------------------------
 #定義された関数群
 #-----------------------------------------------------------------
