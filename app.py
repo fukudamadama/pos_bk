@@ -58,6 +58,7 @@ class HairQuestionYou(BaseModel):
 
 app = FastAPI()
 
+
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
