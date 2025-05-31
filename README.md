@@ -1,20 +1,19 @@
-# Githubリポジトリの初期化→プッシュまで
+# pos_bk
 
-## 1. カレントディレクトリをGitリポジトリとして初期化
-git init
+This is a FastAPI-Next.js repo
 
-## 2. ファイルをステージングエリアに追加
-git add .
+## ■ backend
+- cd backend
+- python3 -m venv backend_env (backend_env という名前の仮想環境を作成)
+- ./backend_env/Script/activate.ps1 (powershell の場合)
+- source backend_env/bin/activate (macOS/Linux の場合)
+- pip install -r requirements.txt
+- uvicorn app:app --reload
 
-## 3. 初期コミットを作成
-git commit -m "Initial commit"
+## ■ frontend
+- cd frontend
+- npm install
+- npm run dev
 
-## 4. リモートリポジトリのURLを追加（URLは実際のものに置き換えてください）
-git remote add origin your-repository-url
-
-## 5. ローカルのmainブランチをリモートにプッシュ
-git push -u origin main
-
-
-## 環境変数備忘
-SCM_DO_BUILD_DURING_DEPLOYMENT:1
+## ■ http://localhost:3000/customers にアクセス
+>>>>>>> 3ee3cbd67024c1cfd295e294243817a1000c3491
