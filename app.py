@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from sqlalchemy.orm import Session
+from sqlalchemy import text                              # ← 追加
+from sqlalchemy.exc import SQLAlchemyError               # ← 追加
 import shutil
 import os
-from adfi_inference import classify_hair
-from gpt_diagnostic import diagnostic_kamo #かも先生の診断コメント
 from db_control.crud import (
     get_db,
     create_hair_quality,
@@ -26,6 +26,7 @@ from db_control.crud import (
 
 # HairQuestionYou を mymodels_MySQL からインポート
 from db_control.mymodels_MySQL import HairQuestionYou
+from db_control.connect_MySQL import engine 
 
 # フォームデータに合わせたPydanticモデル
 class HairQuality(BaseModel):
@@ -74,6 +75,38 @@ app.add_middleware(
 @app.get("/")
 def index():
     return {"message": "FastAPI top page!"}
+
+## DB接続テスト用
+@app.get("/dbtest", tags=["Health Check"])
+async def db_connection_test():
+    """
+    <!--
+        このエンドポイントを叩くと、
+        - engine.connect() で接続を試み
+        - SELECT 1 を実行
+        - 正常なら {"db_status": "ok"} を返す
+        - 失敗したら例外を吐いて 500 返却
+    -->
+    """
+    try:
+        # 1) engine.connect() を使って生の Connection を取得し、直接クエリを実行
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1;"))
+            # 結果を取得（[(1,)] のように返るはず）
+            fetched = result.fetchone()
+            if fetched and fetched[0] == 1:
+                return {"db_status": "ok"}
+            else:
+                # もしなにか想定外なら明示的にエラーを返す
+                raise HTTPException(status_code=500, detail="Unexpected DB response")
+    except SQLAlchemyError as e:
+        # SQLAlchemy／DB 接続まわりで何か SQLException が起きた場合
+        raise HTTPException(status_code=500, detail=f"DB connection failed: {str(e)}")
+    except Exception as e:
+        # その他のエラー
+        raise HTTPException(status_code=500, detail=f"Unknown error: {str(e)}")
+
+
 
 # データ新規作成（CREATE）
 @app.post("/kamokamo/hairQuality")
