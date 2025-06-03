@@ -1,98 +1,91 @@
-# uname() error回避
-import platform
-print("platform", platform.uname())
+# db_control/crud.py
 
+# ──────── 先頭で「相対インポート」を使って models と schemas を読み込む ────────
+from . import models, schemas
 from sqlalchemy.orm import Session
-from db_control.connect_MySQL import SessionLocal
-from db_control.mymodels_MySQL import HairQuality
-# ★★★hairQuestionYouからインポートするので追加
-from db_control.mymodels_MySQL import HairQuestionYou
+from sqlalchemy.exc import NoResultFound
+
+# ※もし SessionLocal や Base も必要なら、connect から相対インポート↓
+# from .connect import SessionLocal  
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ① JANコードをキーにした商品マスタ検索
+# ─────────────────────────────────────────────────────────────────────────────
+def get_product_by_code(db: Session, code: str) -> schemas.ProductRead:
+    """
+    ProductMaster テーブルから JAN コード (code) に一致するレコードを取得する。
+    見つからなければ None を返す。
+    """
+    product = db.query(models.ProductMaster).filter(models.ProductMaster.code == code).first()
+    if not product:
+        return None
+    # Pydantic の schemas.ProductRead に変換して返す
+    return schemas.ProductRead.from_orm(product)
 
 
-# DB接続用（FastAPI依存関数）
-def get_db():
-    db = SessionLocal()
+# ─────────────────────────────────────────────────────────────────────────────
+# ② 取引レコードの作成 (sales_transaction)
+# ─────────────────────────────────────────────────────────────────────────────
+def create_sales_transaction(
+    db: Session,
+    transaction_in: schemas.SalesTransactionCreate
+) -> schemas.SalesTransactionRead:
+    """
+    SalesTransaction テーブルに新しい取引ヘッダを挿入する。
+    """
+    db_trd = models.SalesTransaction(
+        emp_cd=transaction_in.emp_cd,
+        store_cd=transaction_in.store_cd,
+        pos_no=transaction_in.pos_no,
+        total_amt=transaction_in.total_amt,
+        ttl_amt_ex_tax=transaction_in.ttl_amt_ex_tax
+        # transaction_dt はサーバー側で自動設定
+    )
+    db.add(db_trd)
+    db.commit()
+    db.refresh(db_trd)
+    return schemas.SalesTransactionRead.from_orm(db_trd)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ③ 明細レコードの作成 (transaction_detail)
+# ─────────────────────────────────────────────────────────────────────────────
+def create_transaction_detail(
+    db: Session,
+    detail_in: schemas.TransactionDetailCreate
+) -> schemas.TransactionDetailRead:
+    """
+    TransactionDetail テーブルに新しい取引明細を挿入する。
+    - detail_in.trd_id: どの取引ヘッダ（SalesTransaction.trd_id）に紐づけるか
+    - detail_in.prd_id: どの ProductMaster.prd_id と紐づけるか
+    """
+    # 1) 取引ヘッダ (SalesTransaction) が存在するかチェック
     try:
-        yield db
-    finally:
-        db.close()
+        db.query(models.SalesTransaction).filter(
+            models.SalesTransaction.trd_id == detail_in.trd_id
+        ).one()
+    except NoResultFound:
+        raise ValueError(f"取引 ID {detail_in.trd_id} は存在しません")
 
-# CREATE処理（新規登録）
-def create_hair_quality(db: Session, hair_quality_data: dict):
-    db_hair_quality = HairQuality(**hair_quality_data)
-    db.add(db_hair_quality)
+    # 2) 商品マスタ (ProductMaster) が存在するかチェック
+    try:
+        db.query(models.ProductMaster).filter(
+            models.ProductMaster.prd_id == detail_in.prd_id
+        ).one()
+    except NoResultFound:
+        raise ValueError(f"商品 ID {detail_in.prd_id} は存在しません")
+
+    # 3) TransactionDetail レコードを作成してコミット
+    db_detail = models.TransactionDetail(
+        trd_id=detail_in.trd_id,
+        prd_id=detail_in.prd_id,
+        prd_code=detail_in.prd_code,
+        prd_name=detail_in.prd_name,
+        prd_price=detail_in.prd_price,
+        tax_cd=detail_in.tax_cd
+    )
+    db.add(db_detail)
     db.commit()
-    db.refresh(db_hair_quality)
-    return db_hair_quality
+    db.refresh(db_detail)
 
-# CREATE処理（新規登録）　ここいらないかな
-# ★★★hairQuestionYouのデータベース
-def create_hair_questionyou(db: Session, hair_questionyou_data: dict):
-    db_hair_questionyou = HairQuestionYou(**hair_questionyou_data)
-    db.add(db_hair_questionyou)
-    db.commit()
-    db.refresh(db_hair_questionyou)
-    return db_hair_questionyou
-
-# READ処理（全件取得）
-def get_all_hair_quality(db: Session):
-    return db.query(HairQuality).all()
-
-# READ処理（全件取得）
-# ★★★hairQuestionYouのデータベース
-def get_all_hair_questionyou(db: Session):
-    return db.query(HairQuestionYou).all()
-
-# READ処理（特定IDのデータ取得）
-def get_hair_quality_by_id(db: Session, hair_quality_id: int):
-    return db.query(HairQuality).filter(HairQuality.id == hair_quality_id).first()
-
-# READ処理（特定IDのデータ取得）
-# ★★★hairQuestionYouのデータベース
-def get_hair_questionyou_by_id(db: Session, hair_questionyou_id: int):
-    return db.query(HairQuestionYou).filter(HairQuestionYou.id == hair_questionyou_id).first()
-
-# READ処理（hair_quality_idから問診データ取得）
-# hairQualityと紐づいたhairQuestionYouを取得
-def get_questionyou_by_hair_quality_id(db: Session, hair_quality_id: int):
-    return db.query(HairQuestionYou).filter(HairQuestionYou.hair_quality_id == hair_quality_id).first()
-
-# UPDATE処理（特定IDのデータ更新）
-def update_hair_quality(db: Session, hair_quality_id: int, update_data: dict):
-    db_hair_quality = db.query(HairQuality).filter(HairQuality.id == hair_quality_id).first()
-    if db_hair_quality:
-        for key, value in update_data.items():
-            setattr(db_hair_quality, key, value)
-        db.commit()
-        db.refresh(db_hair_quality)
-    return db_hair_quality
-
-
-# UPDATE処理（特定IDのデータ更新）
-# ★★★hairQuestionYouのデータベース
-def update_hair_questionyou(db: Session, hair_questionyou_id: int, update_data: dict):
-    db_hair_questionyou = db.query(HairQuestionYou).filter(HairQuestionYou.id == hair_questionyou_id).first()
-    if db_hair_questionyou:
-        for key, value in update_data.items():
-            setattr(db_hair_questionyou, key, value)
-        db.commit()
-        db.refresh(db_hair_questionyou)
-    return db_hair_questionyou
-
-# DELETE処理（特定IDのデータ削除）
-def delete_hair_quality(db: Session, hair_quality_id: int):
-    db_hair_quality = db.query(HairQuality).filter(HairQuality.id == hair_quality_id).first()
-    if db_hair_quality:
-        db.delete(db_hair_quality)
-        db.commit()
-    return db_hair_quality
-
-
-# DELETE処理（特定IDのデータ削除）
-# ★★★hairQuestionYouのデータベース
-def delete_hair_questionyou(db: Session, hair_questionyou_id: int):
-    db_hair_questionyou = db.query(HairQuestionYou).filter(HairQuestionYou.id == hair_questionyou_id).first()
-    if db_hair_questionyou:
-        db.delete(db_hair_questionyou)
-        db.commit()
-    return db_hair_questionyou
+    return schemas.TransactionDetailRead.from_orm(db_detail)
