@@ -13,3 +13,9 @@ node_modules/
 build/
 dist/
 backend_env/
+bk_env/
+app_kamo.py
+adfi_inference.py
+test_images/
+db_control_kamo/
+gpt_diagnostic.py
